@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI 測試｜統一發票掃描對獎</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;background:#f3f7f6;color:#18332f;margin:0;padding:20px}main{max-width:550px;margin:auto}section{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 2px 10px #0001}h1{font-size:25px}input,select,button{font:inherit;padding:12px;border-radius:9px;border:1px solid #9bb5ae;box-sizing:border-box;max-width:100%}button{background:#087c69;color:white;border:0;cursor:pointer}input{width:100%}video{width:100%;border-radius:10px;background:#111;max-height:360px}small{color:#536d65}.warning{border-left:4px solid #b66c00;padding-left:12px}#result{font-weight:bold;font-size:20px;white-space:pre-wrap}</style></head><body><main>
+<h1>🧾 統一發票 QR 掃描對獎</h1>
+<section class="warning"><strong>AI 功能測試版｜非官方服務</strong><p>本網站為 AI 生成的實驗性功能，非財政部官方服務。掃描與對獎結果僅供測試參考，實際中獎資訊請以財政部公告為準。</p></section>
+<section><label>開獎期別 <select id="period"><option value="11507">115年7–8月</option><option value="11509">115年9–10月（尚未開獎）</option></select></label><p><button id="start">開啟相機掃描</button> <button id="stop" style="background:#637c76">停止</button></p><video id="video" autoplay playsinline muted></video><p id="status">等待掃描</p><small>需要 HTTPS 與相機授權。若瀏覽器不支援原生 QR 解碼，可手動輸入。</small></section>
+<section><label>發票號碼（8碼）<input id="number" inputmode="numeric" maxlength="8" placeholder="例如 12345678"></label><p><button id="check">對獎</button></p><div id="result" aria-live="polite"></div></section>
+<section><small>目前內建 115 年 7–8 月一般發票獎號。雲端發票專屬獎及其他未列獎別不在本工具比對範圍。請以 <a href="https://www.etax.nat.gov.tw/etw-main/ETW183W1/">財政部官方對獎網站</a> 最終核對。</small></section></main>
+<script>
+const prizes={'11507':{special:'89996565',grand:'91098182',first:['54348835','44991397','06595111']}};
+const $=id=>document.getElementById(id);
+function check(){const n=$('number').value.trim(),p=$('period').value,r=$('result');if(!/^\d{8}$/.test(n)){r.textContent='請輸入8位數發票號碼';return}if(!prizes[p]){r.textContent='本期尚未開獎，無法對獎';return}const d=prizes[p];let msg='未中一般號碼獎';if(n===d.special)msg='🎉 特別獎：1000萬元';else if(n===d.grand)msg='🎉 特獎：200萬元';else for(const f of d.first){for(let k=8;k>=3;k--){if(n.slice(-k)===f.slice(-k)){msg='🎉 '+({8:'頭獎：20萬元',7:'二獎：4萬元',6:'三獎：1萬元',5:'四獎：4000元',4:'五獎：1000元',3:'六獎：200元'}[k]);break}}if(msg!=='未中一般號碼獎')break}r.textContent=msg+'\n（AI測試結果，請官方複核）'}
+$('check').onclick=check;
+let stream=null,detector=null,running=false;
+async function stop(){running=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').srcObject=null}
+$('stop').onclick=stop;
+$('start').onclick=async()=>{await stop();try{if(!('BarcodeDetector'in window))throw Error('此瀏覽器不支援原生 QR 掃描，請手動輸入發票號碼');detector=new BarcodeDetector({formats:['qr_code']});stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});$('video').srcObject=stream;await $('video').play();running=true;$('status').textContent='正在掃描 QR Code';scan()}catch(e){$('status').textContent=e.message}};
+async function scan(){if(!running)return;try{const codes=await detector.detect($('video'));for(const c of codes){const s=c.rawValue||'';const m=s.match(/^([A-Z]{2})(\d{8})(\d{3})(\d{2})/);if(m){$('number').value=m[2];const yr=Number(m[3]),mo=Number(m[4]);const period=String(yr)+String(Math.floor((mo-1)/2)*2+1).padStart(2,'0');if([...$('period').options].some(o=>o.value===period))$('period').value=period;check();$('status').textContent='已掃描 '+m[1]+m[2];await stop();return}}}catch(e){$('status').textContent='掃描失敗：'+e.message;await stop();return}requestAnimationFrame(scan)}
+</script></body></html>
